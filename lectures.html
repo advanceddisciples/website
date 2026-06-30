@@ -107,7 +107,7 @@
 <body>
 
   <div id="topbar">
-    <span id="time-on-earth">spawn time on earth: calculating...</span>
+    <span id="time-on-earth">Time on Earth: calculating...</span>
     <span>reach out &nbsp;&nbsp;<a href="https://instagram.com/d.hamanjo" target="_blank">instagram // @d.hamanjo</a></span>
   </div>
 
@@ -154,7 +154,7 @@
       const years = Math.floor(totalDays / 365.25);
       const days = Math.floor(totalDays % 365.25);
       document.getElementById("time-on-earth").textContent =
-        "spawn time on earth: " + years + "y " + days + "d " +
+        "Time on Earth: " + years + "y " + days + "d " +
         String(hrs).padStart(2,"0") + "h " +
         String(min).padStart(2,"0") + "m " +
         String(sec).padStart(2,"0") + "s";
