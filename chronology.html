@@ -168,13 +168,63 @@
       font-size: 12px;
       color: #555;
     }
+
+    /* ── Mobile ── */
+    @media (max-width: 600px) {
+      body { padding: 14px; font-size: 13px; }
+
+      #topbar {
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      #layout {
+        flex-direction: column;
+        gap: 24px;
+        padding-top: 20px;
+        min-height: unset;
+      }
+
+      #nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 10px 20px;
+        position: static;
+        min-width: unset;
+      }
+
+      #manifesto {
+        min-height: unset;
+        padding-top: 0;
+        justify-content: flex-start;
+      }
+
+      #content { max-width: 100%; }
+
+      .entry img { width: 100%; }
+
+      .grid { grid-template-columns: repeat(2, 1fr); }
+
+      .form-row-inline { flex-direction: column; gap: 0; }
+
+      .details { flex-direction: column; gap: 12px; }
+
+      .page-header { flex-direction: column; gap: 4px; }
+
+      .timeline td.year { min-width: 54px; padding-right: 10px; }
+
+      #pagination { flex-direction: column; gap: 12px; }
+      #pagination a { max-width: 100%; }
+
+      .tabs { flex-wrap: wrap; gap: 10px 16px; }
+    }
   </style>
 </head>
 <body>
 
   <!-- TOPBAR -->
   <div id="topbar">
-    <span id="time-on-earth">Time on Earth: calculating...</span>
+    <span id="time-on-earth"># of First Snow: 24 times calculating...</span>
     <span>reach out &nbsp;&nbsp;<a href="https://instagram.com/d.hamanjo" target="_blank">instagram // @d.hamanjo</a></span>
   </div>
 
@@ -204,7 +254,7 @@
             <td class="expand" id="plus-now">+</td>
           </tr>
           <tr class="lore-row" id="lore-now">
-            <td colspan="3"><div class="lore-text">thinking...</div></td>
+            <td colspan="3"><div class="lore-text">imbibing all yo frameworks.</div></td>
           </tr>
 
           <tr onclick="toggle('sage')">
@@ -213,12 +263,12 @@
             <td class="expand" id="plus-sage">+</td>
           </tr>
           <tr class="lore-row" id="lore-sage">
-            <td colspan="3"><div class="lore-text">bought me many lamingtons and shown me corners to watch out for.</div></td>
+            <td colspan="3"><div class="lore-text">- bought me many lamingtons and shown me corners to watch out for.</div></td>
           </tr>
 
           <tr onclick="toggle('wtf')">
             <td class="year">2021</td>
-            <td class="entry-title">WTF</td>
+            <td class="entry-title">coordinate swap v2</td>
             <td class="expand" id="plus-wtf">+</td>
           </tr>
           <tr class="lore-row" id="lore-wtf">
@@ -231,7 +281,7 @@
             <td class="expand" id="plus-impasse">+</td>
           </tr>
           <tr class="lore-row" id="lore-impasse">
-            <td colspan="3"><div class="lore-text">Middle-highschool stuff.</div></td>
+            <td colspan="3"><div class="lore-text"></div></td>
           </tr>
 
           <tr onclick="toggle('continent')">
@@ -258,7 +308,7 @@
             <td class="expand" id="plus-spawned">+</td>
           </tr>
           <tr class="lore-row" id="lore-spawned">
-            <td colspan="3"><div class="lore-text">ah hell nah</div></td>
+            <td colspan="3"><div class="lore-text"></div></td>
           </tr>
 
         </tbody>
@@ -270,7 +320,7 @@
   <hr>
 
   <div id="footer">
-    &copy; 2026 Your Name &nbsp;·&nbsp; All rights reserved
+    &copy; 2026 Advanced Disciples &nbsp;·&nbsp; All rights reserved
   </div>
 
   <script>
@@ -289,7 +339,7 @@
       const years = Math.floor(totalDays / 365.25);
       const days = Math.floor(totalDays % 365.25);
       document.getElementById("time-on-earth").textContent =
-        "Time on Earth: " + years + "y " + days + "d " +
+        "# of First Snow: 24 times " + years + "y " + days + "d " +
         String(hrs).padStart(2,"0") + "h " +
         String(min).padStart(2,"0") + "m " +
         String(sec).padStart(2,"0") + "s";

@@ -170,6 +170,56 @@
 
     #pagination .prev::before { content: "← "; }
     #pagination .next::after  { content: " →"; }
+
+    /* ── Mobile ── */
+    @media (max-width: 600px) {
+      body { padding: 14px; font-size: 13px; }
+
+      #topbar {
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      #layout {
+        flex-direction: column;
+        gap: 24px;
+        padding-top: 20px;
+        min-height: unset;
+      }
+
+      #nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 10px 20px;
+        position: static;
+        min-width: unset;
+      }
+
+      #manifesto {
+        min-height: unset;
+        padding-top: 0;
+        justify-content: flex-start;
+      }
+
+      #content { max-width: 100%; }
+
+      .entry img { width: 100%; }
+
+      .grid { grid-template-columns: repeat(2, 1fr); }
+
+      .form-row-inline { flex-direction: column; gap: 0; }
+
+      .details { flex-direction: column; gap: 12px; }
+
+      .page-header { flex-direction: column; gap: 4px; }
+
+      .timeline td.year { min-width: 54px; padding-right: 10px; }
+
+      #pagination { flex-direction: column; gap: 12px; }
+      #pagination a { max-width: 100%; }
+
+      .tabs { flex-wrap: wrap; gap: 10px 16px; }
+    }
   </style>
 </head>
 <body>

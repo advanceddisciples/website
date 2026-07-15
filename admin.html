@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Advanced Disciples</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #000;
+      background: #fff;
+      padding: 20px;
+    }
+
+    a { color: #00e; text-decoration: underline; }
+    a:visited { color: #551a8b; }
+    a:hover { color: #f00; }
+
+    hr { border: none; border-top: 1px solid #000; margin: 12px 0; }
+
+    /* Topbar */
+    #topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 16px;
+    }
+
+    /* Layout */
+    #layout {
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
+    }
+
+    #nav {
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 100px;
+      position: sticky;
+      top: 20px;
+      align-self: flex-start;
+    }
+
+    #nav a { display: block; }
+    #nav a.active { color: #000; text-decoration: none; cursor: default; }
+
+    #content {
+      flex: 1;
+      max-width: 800px;
+    }
+
+    /* Login gate */
+    #login-gate {
+      max-width: 300px;
+    }
+
+    #login-gate input {
+      font-family: monospace;
+      font-size: 13px;
+      border: 1px solid #000;
+      padding: 6px 8px;
+      width: 100%;
+      margin-bottom: 8px;
+      outline: none;
+    }
+
+    #login-gate button {
+      font-family: monospace;
+      font-size: 12px;
+      border: 1px solid #000;
+      background: #000;
+      color: #fff;
+      padding: 6px 16px;
+      cursor: pointer;
+    }
+
+    #login-gate button:hover { background: #333; }
+    #login-error { font-size: 11px; color: #c0392b; margin-top: 6px; display: none; }
+
+    /* Admin panel */
+    #admin-panel { display: none; }
+
+    /* Section tabs */
+    .tabs {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 24px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .tab {
+      cursor: pointer;
+      color: #bbb;
+      text-decoration: none;
+      padding-bottom: 2px;
+    }
+
+    .tab.active {
+      color: #000;
+      border-bottom: 1px solid #000;
+    }
+
+    /* Panels */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Form rows */
+    .form-row {
+      margin-bottom: 20px;
+    }
+
+    .form-row label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #888;
+      margin-bottom: 4px;
+    }
+
+    .form-row input,
+    .form-row textarea,
+    .form-row select {
+      font-family: monospace;
+      font-size: 13px;
+      border: 1px solid #ccc;
+      padding: 6px 8px;
+      width: 100%;
+      outline: none;
+      background: #fff;
+    }
+
+    .form-row input:focus,
+    .form-row textarea:focus {
+      border-color: #000;
+    }
+
+    .form-row textarea {
+      height: 100px;
+      resize: vertical;
+    }
+
+    .form-row-inline {
+      display: flex;
+      gap: 16px;
+    }
+
+    .form-row-inline .form-row {
+      flex: 1;
+    }
+
+    /* Buttons */
+    .btn {
+      font-family: monospace;
+      font-size: 12px;
+      border: 1px solid #000;
+      background: #000;
+      color: #fff;
+      padding: 7px 20px;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+
+    .btn:hover { background: #333; }
+
+    .btn-ghost {
+      background: #fff;
+      color: #000;
+    }
+
+    .btn-ghost:hover { background: #f5f5f5; }
+
+    .btn-danger {
+      border-color: #c0392b;
+      background: #fff;
+      color: #c0392b;
+    }
+
+    .btn-danger:hover { background: #fdf0f0; }
+
+    /* Entry list */
+    .entry-list {
+      margin-bottom: 24px;
+    }
+
+    .entry-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 10px 0;
+      border-bottom: 1px dotted #ddd;
+      font-size: 13px;
+    }
+
+    .entry-row:last-child { border-bottom: none; }
+
+    .entry-row .meta { font-size: 11px; color: #888; margin-top: 2px; }
+
+    .entry-row-actions { display: flex; gap: 12px; font-size: 11px; }
+    .entry-row-actions a { cursor: pointer; }
+
+    /* Status badge */
+    .badge {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 1px 5px;
+      border: 1px solid #ccc;
+      color: #888;
+      margin-left: 8px;
+    }
+
+    .badge-available { border-color: #000; color: #000; }
+    .badge-sold { border-color: #bbb; color: #bbb; }
+    .badge-burn { border-color: #c0392b; color: #c0392b; }
+
+    /* Success message */
+    .success-msg {
+      font-size: 12px;
+      color: #27ae60;
+      margin-top: 8px;
+      display: none;
+    }
+
+    /* Section heading */
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #bbb;
+      margin-bottom: 16px;
+    }
+
+    /* Footer */
+    #footer { margin-top: 40px; font-size: 12px; color: #555; }
+
+    /* ── Mobile ── */
+    @media (max-width: 600px) {
+      body { padding: 14px; font-size: 13px; }
+
+      #topbar {
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      #layout {
+        flex-direction: column;
+        gap: 24px;
+        padding-top: 20px;
+        min-height: unset;
+      }
+
+      #nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 10px 20px;
+        position: static;
+        min-width: unset;
+      }
+
+      #manifesto {
+        min-height: unset;
+        padding-top: 0;
+        justify-content: flex-start;
+      }
+
+      #content { max-width: 100%; }
+
+      .entry img { width: 100%; }
+
+      .grid { grid-template-columns: repeat(2, 1fr); }
+
+      .form-row-inline { flex-direction: column; gap: 0; }
+
+      .details { flex-direction: column; gap: 12px; }
+
+      .page-header { flex-direction: column; gap: 4px; }
+
+      .timeline td.year { min-width: 54px; padding-right: 10px; }
+
+      #pagination { flex-direction: column; gap: 12px; }
+      #pagination a { max-width: 100%; }
+
+      .tabs { flex-wrap: wrap; gap: 10px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="topbar">
+    <span># of First Snow: 24 times</span>
+    <span>reach out &nbsp;&nbsp;<a href="https://instagram.com/d.hamanjo" target="_blank">instagram // @d.hamanjo</a></span>
+  </div>
+
+  <hr>
+
+  <div id="layout">
+
+    <div id="nav">
+      <a href="objects.html">Objects</a>
+      <a href="chronology.html">Chronology</a>
+      <a href="lectures.html">Lectures</a>
+      <a href="trash.html" style="color:#bbb;text-decoration:line-through;">Trash</a>
+      <br>
+      <a href="admin.html" class="active">Admin</a>
+    </div>
+
+    <div id="content">
+
+      <!-- LOGIN -->
+      <div id="login-gate">
+        <div class="section-label">[ admin ]</div>
+        <div class="form-row" style="max-width:240px;">
+          <label>password</label>
+          <input type="password" id="password-input" placeholder="·····" onkeydown="if(event.key==='Enter')login()">
+        </div>
+        <div id="login-error" style="font-size:11px;color:#c0392b;margin-top:6px;display:none;">incorrect.</div>
+      </div>
+
+      <!-- ADMIN PANEL -->
+      <div id="admin-panel">
+
+        <div class="tabs">
+          <span class="tab active" onclick="switchTab('objects')">Objects</span>
+          <span class="tab" onclick="switchTab('chronology')">Chronology</span>
+          <span class="tab" onclick="switchTab('lectures')">Lectures</span>
+          <span class="tab" onclick="switchTab('trash')">Trash</span>
+        </div>
+
+        <!-- OBJECTS PANEL -->
+        <div class="panel active" id="panel-objects">
+          <div class="section-label">[ add object ]</div>
+
+          <div class="form-row">
+            <label>Date</label>
+            <input type="date" id="obj-date">
+          </div>
+          <div class="form-row">
+            <label>Type</label>
+            <select id="obj-type">
+              <option value="painting">painting</option>
+              <option value="sketch">sketch</option>
+              <option value="object">object</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Headline (journal title)</label>
+            <input type="text" id="obj-title" placeholder="What happened that day...">
+          </div>
+          <div class="form-row">
+            <label>Lore</label>
+            <textarea id="obj-lore" placeholder="Write the lore for this piece..."></textarea>
+          </div>
+          <div class="form-row-inline">
+            <div class="form-row">
+              <label>Medium</label>
+              <input type="text" id="obj-medium" placeholder="Oil on canvas">
+            </div>
+            <div class="form-row">
+              <label>Dimensions</label>
+              <input type="text" id="obj-dims" placeholder="60 × 80 cm">
+            </div>
+          </div>
+          <div class="form-row-inline">
+            <div class="form-row">
+              <label>Price</label>
+              <input type="text" id="obj-price" placeholder="£ 400">
+            </div>
+            <div class="form-row">
+              <label>Status</label>
+              <select id="obj-status">
+                <option value="available">Available</option>
+                <option value="sold">Sold</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Image filename</label>
+            <input type="text" id="obj-image" placeholder="painting-01.jpg">
+          </div>
+
+          <button class="btn" onclick="generateObject()">Generate HTML →</button>
+          <div class="success-msg" id="obj-success">copied to clipboard.</div>
+
+          <div class="form-row" style="margin-top:24px; display:none;" id="obj-output-row">
+            <label>Generated HTML — paste into index.html and objects.html</label>
+            <textarea id="obj-output" style="height:180px; font-size:11px; color:#555;"></textarea>
+          </div>
+
+          <hr style="margin:32px 0;">
+
+          <div class="section-label">[ current objects ]</div>
+          <div class="entry-list">
+            <div class="entry-row">
+              <div>
+                <div>Spent the morning in the kitchen watching light move across the wall.</div>
+                <div class="meta">2024-11-03 · painting</div>
+              </div>
+              <div class="entry-row-actions">
+                <span class="badge badge-available">available</span>
+                <a onclick="alert('Edit: open entry.html and update directly.')">edit</a>
+                <a style="color:#c0392b;" onclick="confirm('Mark as sold?')">sold</a>
+              </div>
+            </div>
+            <div class="entry-row">
+              <div>
+                <div>Train ride home. Couldn't sleep the night before.</div>
+                <div class="meta">2024-09-21 · sketch</div>
+              </div>
+              <div class="entry-row-actions">
+                <span class="badge badge-available">available</span>
+                <a onclick="alert('Edit: open entry-sketch-01.html and update directly.')">edit</a>
+                <a style="color:#c0392b;" onclick="confirm('Mark as sold?')">sold</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHRONOLOGY PANEL -->
+        <div class="panel" id="panel-chronology">
+          <div class="section-label">[ add chapter ]</div>
+
+          <div class="form-row-inline">
+            <div class="form-row">
+              <label>Year / Period</label>
+              <input type="text" id="ch-year" placeholder="2024 or 2018–2021">
+            </div>
+            <div class="form-row">
+              <label>Title</label>
+              <input type="text" id="ch-title" placeholder="chapter title">
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Lore</label>
+            <textarea id="ch-lore" placeholder="Write the lore for this chapter..."></textarea>
+          </div>
+          <div class="form-row">
+            <label>Highlight in red?</label>
+            <select id="ch-highlight">
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+
+          <button class="btn" onclick="generateChapter()">Generate HTML →</button>
+          <div class="success-msg" id="ch-success">copied to clipboard.</div>
+
+          <div class="form-row" style="margin-top:24px; display:none;" id="ch-output-row">
+            <label>Generated HTML — paste into chronology.html</label>
+            <textarea id="ch-output" style="height:160px; font-size:11px; color:#555;"></textarea>
+          </div>
+        </div>
+
+        <!-- LECTURES PANEL -->
+        <div class="panel" id="panel-lectures">
+          <div class="section-label">[ add lecture ]</div>
+
+          <div class="form-row-inline">
+            <div class="form-row">
+              <label>Year</label>
+              <input type="text" id="lec-year" placeholder="2024">
+            </div>
+            <div class="form-row">
+              <label>Venue / Location</label>
+              <input type="text" id="lec-venue" placeholder="venue name, city">
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Title</label>
+            <input type="text" id="lec-title" placeholder="Lecture title">
+          </div>
+          <div class="form-row">
+            <label>Link (optional)</label>
+            <input type="text" id="lec-link" placeholder="https://...">
+          </div>
+
+          <button class="btn" onclick="generateLecture()">Generate HTML →</button>
+          <div class="success-msg" id="lec-success">copied to clipboard.</div>
+
+          <div class="form-row" style="margin-top:24px; display:none;" id="lec-output-row">
+            <label>Generated HTML — paste into lectures.html</label>
+            <textarea id="lec-output" style="height:140px; font-size:11px; color:#555;"></textarea>
+          </div>
+        </div>
+
+        <!-- TRASH PANEL -->
+        <div class="panel" id="panel-trash">
+          <div class="section-label">[ add to trash ]</div>
+
+          <div class="form-row">
+            <label>Title</label>
+            <input type="text" id="tr-title" placeholder="Something I am not proud of">
+          </div>
+          <div class="form-row-inline">
+            <div class="form-row">
+              <label>Date Added</label>
+              <input type="date" id="tr-added">
+            </div>
+            <div class="form-row">
+              <label>Burn Date</label>
+              <input type="date" id="tr-burn">
+            </div>
+          </div>
+
+          <button class="btn" onclick="generateTrash()">Generate HTML →</button>
+          <div class="success-msg" id="tr-success">copied to clipboard.</div>
+
+          <div class="form-row" style="margin-top:24px; display:none;" id="tr-output-row">
+            <label>Generated HTML — paste into trash.html</label>
+            <textarea id="tr-output" style="height:140px; font-size:11px; color:#555;"></textarea>
+          </div>
+        </div>
+
+      </div> <!-- /admin-panel -->
+    </div> <!-- /content -->
+  </div> <!-- /layout -->
+
+  <hr>
+
+  <div id="footer">
+    &copy; 2026 Advanced Disciples &nbsp;·&nbsp; All rights reserved
+  </div>
+
+  <script>
+    // ← SET YOUR PASSWORD HERE
+    const ADMIN_PASSWORD = 'myphonenumberis2532738017';
+
+    function login() {
+      const val = document.getElementById('password-input').value;
+      if (val === ADMIN_PASSWORD) {
+        document.getElementById('login-gate').style.display = 'none';
+        document.getElementById('admin-panel').style.display = 'block';
+      } else {
+        document.getElementById('login-error').style.display = 'block';
+      }
+    }
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('panel-' + name).classList.add('active');
+    }
+
+    function copyAndShow(html, outputId, successId, rowId) {
+      document.getElementById(outputId).value = html;
+      document.getElementById(rowId).style.display = 'block';
+      navigator.clipboard.writeText(html).then(() => {
+        const msg = document.getElementById(successId);
+        msg.style.display = 'block';
+        setTimeout(() => msg.style.display = 'none', 2000);
+      });
+    }
+
+    function generateObject() {
+      const date = document.getElementById('obj-date').value;
+      const type = document.getElementById('obj-type').value;
+      const title = document.getElementById('obj-title').value;
+      const lore = document.getElementById('obj-lore').value;
+      const medium = document.getElementById('obj-medium').value;
+      const dims = document.getElementById('obj-dims').value;
+      const price = document.getElementById('obj-price').value;
+      const status = document.getElementById('obj-status').value;
+      const image = document.getElementById('obj-image').value;
+      const slug = date + '-' + type;
+
+      const feedHTML =
+`<!-- ENTRY — ${type} -->
+<div class="entry">
+  <div class="entry-meta">${date} &nbsp;·&nbsp; ${type}</div>
+  <h2><a href="entry-${slug}.html" style="color:inherit;text-decoration:none;">${title}</a></h2>
+  <img src="${image}" alt="${title}">
+</div>
+
+<hr class="entry-divider">`;
+
+      const entryHTML =
+`<!-- Save as: entry-${slug}.html -->
+<div class="entry-meta"><a href="index.html#objects">${type}</a></div>
+<h1>${title}</h1>
+<div class="image-block"><img src="${image}" alt="${title}"></div>
+<hr>
+<div class="details">
+  <span><span class="label">Medium</span><span class="value">${medium}</span></span>
+  <span><span class="label">Dimensions</span><span class="value">${dims}</span></span>
+  <span><span class="label">Status</span><span class="value">${status}</span></span>
+  <span><span class="label">Price</span><span class="price">${price}</span></span>
+</div>
+<hr>
+<div class="lore-box"><p>${lore}</p></div>`;
+
+      copyAndShow(feedHTML + '\n\n---\n\n' + entryHTML, 'obj-output', 'obj-success', 'obj-output-row');
+    }
+
+    function generateChapter() {
+      const year = document.getElementById('ch-year').value;
+      const title = document.getElementById('ch-title').value;
+      const lore = document.getElementById('ch-lore').value;
+      const highlight = document.getElementById('ch-highlight').value === 'yes';
+      const id = title.toLowerCase().replace(/\s+/g, '-');
+      const titleClass = highlight ? 'entry-title highlight' : 'entry-title';
+
+      const html =
+`<tr onclick="toggle('${id}')">
+  <td class="year">${year}</td>
+  <td class="${titleClass}">${title}</td>
+  <td class="expand" id="plus-${id}">+</td>
+</tr>
+<tr class="lore-row" id="lore-${id}">
+  <td colspan="3"><div class="lore-text">${lore}</div></td>
+</tr>`;
+
+      copyAndShow(html, 'ch-output', 'ch-success', 'ch-output-row');
+    }
+
+    function generateLecture() {
+      const year = document.getElementById('lec-year').value;
+      const venue = document.getElementById('lec-venue').value;
+      const title = document.getElementById('lec-title').value;
+      const link = document.getElementById('lec-link').value;
+
+      const html =
+`<div class="lecture">
+  <div class="lecture-meta">${year} &nbsp;·&nbsp; ${venue}</div>
+  <h2>${title}</h2>${link ? '\n  <a class="lecture-link" href="' + link + '" target="_blank">View →</a>' : ''}
+</div>`;
+
+      copyAndShow(html, 'lec-output', 'lec-success', 'lec-output-row');
+    }
+
+    function generateTrash() {
+      const title = document.getElementById('tr-title').value;
+      const added = document.getElementById('tr-added').value;
+      const burn = document.getElementById('tr-burn').value;
+
+      const html =
+`<div class="trash-item">
+  <div class="trash-meta">added ${added}</div>
+  <h2>${title}</h2>
+  <div class="burn-timer">
+    <span class="label">burns in</span>
+    <span class="countdown" data-burn="${burn}">calculating...</span>
+  </div>
+</div>`;
+
+      copyAndShow(html, 'tr-output', 'tr-success', 'tr-output-row');
+    }
+  </script>
+
+</body>
+</html>
