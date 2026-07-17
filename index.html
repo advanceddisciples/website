@@ -24,7 +24,7 @@
     #manifesto a { color: #00e; font-size: 11px; }
     #tree-wrap { flex: 1; overflow: auto; position: relative; }
     canvas { display: block; }
-    #footer { padding: 10px 40px; border-top: 1px solid #eee; font-family: monospace; font-size: 11px; color: #bbb; text-align: center; }
+    #footer { padding: 10px 40px; font-family: monospace; font-size: 11px; color: #bbb; text-align: center; }
 
     @media (max-width: 600px) {
       #header { padding: 16px 20px 12px; }
@@ -495,11 +495,27 @@ function init() {
 
 canvas.addEventListener('click', e => handleCanvasInput(e.clientX, e.clientY));
 
+let touchStartX = 0, touchStartY = 0, touchMoved = false;
+
 canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
+  const t = e.changedTouches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+  touchMoved = false;
+}, { passive: true });
+
+canvas.addEventListener('touchmove', e => {
+  const t = e.changedTouches[0];
+  if (Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY) > 6) {
+    touchMoved = true;
+  }
+}, { passive: true });
+
+canvas.addEventListener('touchend', e => {
+  if (touchMoved) return; // was a pan, not a tap
   const t = e.changedTouches[0];
   handleCanvasInput(t.clientX, t.clientY);
-}, { passive: false });
+}, { passive: true });
 
 window.addEventListener('load', init);
 let resizeTimer;
