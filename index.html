@@ -22,7 +22,7 @@
     }
     #manifesto { font-family: monospace; font-size: 11px; color: #888; line-height: 2; text-align: center; width: 100%; }
     #manifesto a { color: #00e; font-size: 11px; }
-    #tree-wrap { flex: 1; overflow: auto; position: relative; }
+    #tree-wrap { flex: 1; overflow: auto; overflow-x: auto; overflow-y: auto; position: relative; -webkit-overflow-scrolling: touch; }
     canvas { display: block; }
     #footer { padding: 10px 40px; font-family: monospace; font-size: 11px; color: #bbb; text-align: center; }
 
@@ -495,26 +495,21 @@ function init() {
 
 canvas.addEventListener('click', e => handleCanvasInput(e.clientX, e.clientY));
 
-let touchStartX = 0, touchStartY = 0, touchMoved = false;
+let touchStartX = 0, touchStartY = 0;
 
 canvas.addEventListener('touchstart', e => {
   const t = e.changedTouches[0];
   touchStartX = t.clientX;
   touchStartY = t.clientY;
-  touchMoved = false;
-}, { passive: true });
-
-canvas.addEventListener('touchmove', e => {
-  const t = e.changedTouches[0];
-  if (Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY) > 6) {
-    touchMoved = true;
-  }
 }, { passive: true });
 
 canvas.addEventListener('touchend', e => {
-  if (touchMoved) return; // was a pan, not a tap
   const t = e.changedTouches[0];
-  handleCanvasInput(t.clientX, t.clientY);
+  const dx = Math.abs(t.clientX - touchStartX);
+  const dy = Math.abs(t.clientY - touchStartY);
+  if (dx < 8 && dy < 8) {
+    handleCanvasInput(t.clientX, t.clientY);
+  }
 }, { passive: true });
 
 window.addEventListener('load', init);
