@@ -188,6 +188,9 @@ function recompute() {
   assignTargets(DATA, 0, counter, null);
   assignHidden(DATA, 'root');
   resizeCanvas(counter.i);
+  animating = true;
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(tick);
 }
 
 function resizeCanvas(leafCount) {
@@ -243,7 +246,6 @@ function tick() {
 }
 
 function pulseTick() {
-  pulseT++;
   draw();
   rafId = requestAnimationFrame(pulseTick);
 }
@@ -275,25 +277,6 @@ function drawAll(node, parent) {
 
   ctx.save();
   ctx.globalAlpha = alpha;
-
-  // radiating pulse on root when all collapsed
-  if (!parent) {
-    const allC = true; // always pulse
-    if (allC) {
-      const rings = 3;
-      for (let r = 0; r < rings; r++) {
-        const t = ((pulseT / 180 + r / rings) % 1);
-        const radius = DR + t * 22;
-        const alpha2 = (1 - t) * 0.35;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(100,140,200,${alpha2})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-      pulseT++;
-    }
-  }
 
   // dot
   ctx.beginPath();
@@ -331,19 +314,25 @@ function drawAll(node, parent) {
     // date above, title below — RIGHT of dot
     ctx.textAlign = 'left';
     const mobF = window.innerWidth < 600;
+    ctx.textAlign = 'left';
     if (node.date) {
+      // date above title, both above the line
       ctx.fillStyle = '#bbb';
       ctx.font = (mobF?'8px':'9px') + ' monospace';
-      ctx.fillText(node.date, p.x + DR + 7, p.y - 5);
+      ctx.fillText(node.date, p.x + DR + 7, p.y - 14);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.font = (mobF?'10px':'11px') + ' monospace';
+      ctx.fillText(node.name, p.x + DR + 7, p.y - 4);
+    } else {
+      ctx.fillStyle = '#1a1a1a';
+      ctx.font = (mobF?'10px':'11px') + ' monospace';
+      ctx.fillText(node.name, p.x + DR + 7, p.y - 4);
     }
-    ctx.fillStyle = '#1a1a1a';
-    ctx.font = (mobF?'10px':'11px') + ' monospace';
-    ctx.fillText(node.name, p.x + DR + 7, p.y + (node.date ? 7 : 4));
-    // desc
+    // desc above line when open
     if (descOpen.has(node.id) && node.desc) {
       ctx.fillStyle = '#888';
       ctx.font = '9px monospace';
-      ctx.fillText(node.desc, p.x + DR + 7, p.y + 20);
+      ctx.fillText(node.desc, p.x + DR + 7, p.y - (node.date ? 26 : 16));
     }
   } else if (isLeaf) {
     ctx.font = (window.innerWidth<600?'10px':'11px') + ' monospace';
@@ -430,15 +419,16 @@ function allNodes(node, arr) {
   return arr;
 }
 
-canvas.addEventListener('click', e => {
+function handleCanvasInput(clientX, clientY) {
   const r = canvas.getBoundingClientRect();
-  const mx = e.clientX - r.left + wrap.scrollLeft;
-  const my = e.clientY - r.top  + wrap.scrollTop;
+  const mx = clientX - r.left + wrap.scrollLeft;
+  const my = clientY - r.top  + wrap.scrollTop;
 
   for (const node of allNodes(DATA, [])) {
     const p = pos[node.id];
-    if (!p || p.alpha < 0.2) continue;
-    const hitR = window.innerWidth < 600 ? DR + 22 : DR + 14;
+    if (!p) continue;
+    if (p.alpha < 0.05 && p.talpha === 0) continue;
+    const hitR = window.innerWidth < 600 ? DR + 28 : DR + 14;
     // check image box click first
     if (node.img) {
       const tw = 52, th = 38;
@@ -456,11 +446,6 @@ canvas.addEventListener('click', e => {
       else descOpen.add(node.id);
       return;
     }
-    if (node.data && node.data.shopNode || node.shopNode) {
-      if (descOpen.has(node.id)) descOpen.delete(node.id);
-      else descOpen.add(node.id);
-      return;
-    }
     if (node.id === 'root') {
       // root dot toggles L1 children
       const allC = DATA.children.every(ch => collapsed.has(ch.id));
@@ -473,14 +458,19 @@ canvas.addEventListener('click', e => {
       window.location.href = node.href;
       return;
     }
-    if (node.children) {
+    if (node.shopNode) {
+      if (descOpen.has(node.id)) descOpen.delete(node.id);
+      else descOpen.add(node.id);
+      return;
+    }
+    if (node.children && node.children.length > 0) {
       if (collapsed.has(node.id)) collapsed.delete(node.id);
       else collapsed.add(node.id);
       recompute();
       return;
     }
   }
-});
+}
 
 function allIds(node) {
   const ids = [node.id];
@@ -502,6 +492,14 @@ function init() {
   cancelAnimationFrame(rafId);
   rafId = requestAnimationFrame(tick);
 }
+
+canvas.addEventListener('click', e => handleCanvasInput(e.clientX, e.clientY));
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  handleCanvasInput(t.clientX, t.clientY);
+}, { passive: false });
 
 window.addEventListener('load', init);
 let resizeTimer;
