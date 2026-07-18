@@ -28,11 +28,14 @@
       font-size: 11px;
       color: #bbb;
       text-align: center;
+      position: relative;
+      z-index: 10;
+      background: #fff;
     }
 
     #scroll-container {
       width: 100vw;
-      height: calc(100vh - 120px);
+      height: calc(100vh - 160px);
       overflow: hidden;
       position: relative;
     }
@@ -430,7 +433,8 @@ function handleInput(clientX, clientY) {
           collapseDeep(ch);
         });
       } else {
-        // collapse everything
+        // collapse everything including L1
+        DATA.children.forEach(ch => collapsed.add(ch.id));
         collapseDeep(DATA);
       }
       recompute(); return;
@@ -610,24 +614,10 @@ function animateCam(tx, ty, ts) {
 // auto recenter if user pans away — show button after idle
 let idleTimer;
 function resetIdleTimer() {
-  clearTimeout(idleTimer);
-  document.getElementById('reset-btn').style.opacity = '0';
-  idleTimer = setTimeout(() => {
-    const b = getBounds();
-    if (b.minX === Infinity) return;
-    const cx = b.minX * camScale + camX;
-    const cy = b.minY * camScale + camY;
-    const ex = b.maxX * camScale + camX;
-    const ey = b.maxY * camScale + camY;
-    // if tree is mostly off screen, show button
-    if (ex < 0 || cx > W || ey < 0 || cy > H) {
-      document.getElementById('reset-btn').style.opacity = '1';
-    }
-  }, 500);
+  // button always visible — no hiding
 }
 
-document.getElementById('reset-btn').style.opacity = '0';
-document.getElementById('reset-btn').style.transition = 'opacity 0.3s';
+document.getElementById('reset-btn').style.opacity = '1';
 
 function drawWithCam() {
   const cw = canvas.width / dpr, ch = canvas.height / dpr;
