@@ -6,6 +6,12 @@
   <title>Advanced Disciples</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-width: 100%;
+      overflow-x: auto;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #fff;
@@ -22,7 +28,7 @@
     }
     #manifesto { font-family: monospace; font-size: 11px; color: #888; line-height: 2; text-align: center; width: 100%; }
     #manifesto a { color: #00e; font-size: 11px; }
-    #tree-wrap { flex: 1; overflow: auto; position: relative; -webkit-overflow-scrolling: touch; }
+    #tree-wrap { flex: 1; overflow: auto; overflow-x: auto; overflow-y: auto; position: relative; -webkit-overflow-scrolling: touch; min-height: 300px; }
     canvas { display: block; }
     #footer { padding: 10px 40px; font-family: monospace; font-size: 11px; color: #bbb; text-align: center; }
 
@@ -194,8 +200,10 @@ function recompute() {
 }
 
 function resizeCanvas(leafCount) {
-  W = wrap.offsetWidth || 800;
-  H = Math.max(wrap.offsetHeight || 500, PAD_T + (leafCount + 1) * ROW);
+  // don't constrain W to viewport — let canvas be as wide as tree needs
+  const minW = wrap.clientWidth || 800;
+  W = minW;
+  H = Math.max(wrap.clientHeight || 500, PAD_T + (leafCount + 1) * ROW);
 
   // compute how wide the tree is, then center it
   function maxDepth(node) {
