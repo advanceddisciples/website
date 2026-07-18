@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Disciples</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    #header {
+      padding: 20px 40px 16px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    #manifesto { font-family: monospace; font-size: 11px; color: #888; line-height: 2; text-align: center; width: 100%; }
+    #manifesto a { color: #00e; font-size: 11px; }
+    #tree-wrap { flex: 1; overflow: auto; overflow-x: auto; overflow-y: auto; position: relative; -webkit-overflow-scrolling: touch; }
+    canvas { display: block; }
+    #footer { padding: 10px 40px; font-family: monospace; font-size: 11px; color: #bbb; text-align: center; }
+
+    @media (max-width: 600px) {
+      #header { padding: 16px 20px 12px; }
+      #manifesto { font-size: 10px; line-height: 1.8; }
+      #footer { padding: 10px 20px; font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <div id="manifesto">
+      To Advanced Disciples,<br>
+      For those who have eyes to see and ears to hear: sit on the plinth and pick your struggle.
+    </div>
+  </div>
+  <div id="tree-wrap"><canvas id="c"></canvas></div>
+  <div id="footer">&copy; 2026 Advanced Disciples &nbsp;·&nbsp; All rights reserved</div>
+
+<script>
+const wrap = document.getElementById('tree-wrap');
+const imgCache = {};
+function loadImg(src) {
+  if (!src) return null;
+  if (!imgCache[src]) {
+    const im = new Image();
+    imgCache[src] = im;
+    im.onload = () => { animating = true; if (rafId) cancelAnimationFrame(rafId); rafId = requestAnimationFrame(tick); };
+    im.onerror = () => { im._failed = true; };
+    im.src = src;
+  }
+  return imgCache[src];
+}
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
+
+// ── Data ──────────────────────────────────────────────────────
+const DATA = {
+  id:'root', name:'',
+  children:[
+    { id:'shop', name:'Shop', shopNode:true, desc:'Unavailable for Now',
+      children:[]
+    },
+    { id:'objects', name:'Objects',
+      children:[
+        { id:'paintings', name:'Paintings', href:'objects.html',
+          children:[
+            { id:'p1', name:'Untitled No. 1', href:'entry.html',            leaf:true, img:'painting-01.jpg' },
+            { id:'p2', name:'Study in Blue',  href:'entry.html',            leaf:true, img:'painting-02.jpg' },
+            { id:'p3', name:'Horizon III',    href:'entry.html',            leaf:true, img:'painting-03.jpg' },
+          ]
+        },
+        { id:'sketches', name:'Sketches', href:'objects.html',
+          children:[
+            { id:'s1', name:'Receipt sketch', href:'entry-sketch-01.html', leaf:true, img:'sketch-01.jpg' },
+            { id:'s2', name:'Figure study',   href:'entry-sketch-02.html', leaf:true, img:'sketch-02.jpg' },
+          ]
+        },
+        { id:'obj2', name:'Brooches', href:'objects.html',
+          children:[
+            { id:'o1', name:'Found object', href:'entry-object-01.html',  leaf:true, img:'object-01.jpg' },
+          ]
+        },
+      ]
+    },
+    { id:'chronology', name:'Chronology',
+      children:[
+        { id:'c1', name:'spawned',            date:'2001',      desc:'ah hell nah' },
+        { id:'c2', name:'fell on my chin',    date:'2013',      desc:'Tabula Rasa' },
+        { id:'c3', name:'coordinate swap',    date:'2015',      desc:'Bye, Korea. Hello, Americans :)' },
+        { id:'c4', name:'impasse arena',      date:'2015–2021', desc:'' },
+        { id:'c5', name:'coordinate swap v2', date:'2021',      desc:'Moved to Detroit.' },
+        { id:'c6', name:'autistic sage',      date:'2025',      desc:'- bought me many lamingtons and shown me corners to watch out for.' },
+        { id:'c7', name:'now',                date:'',          desc:'imbibing all yo frameworks.' },
+      ]
+    },
+    { id:'contact', name:'Contact',
+      children:[
+        { id:'email', name:'email // dcho90014@gmail.com', href:'mailto:dcho90014@gmail.com', contact:true },
+        { id:'insta', name:'instagram // @d.hamanjo',           href:'https://instagram.com/d.hamanjo', contact:true },
+      ]
+    },
+  ]
+};
+
+// ── Node state ────────────────────────────────────────────────
+const collapsed = new Set();   // node ids with children hidden
+let pulseT = 0; // for radiating ring animation
+const descOpen  = new Set();   // chron ids with desc shown
+
+// Each node gets animated position: { x, y, ox, oy, alpha, tx, ty, talpha }
+const pos = {};  // id → { x, y, alpha, tx, ty, talpha, px, py } (p = parent pos)
+
+const isMobile = window.innerWidth < 600;
+const COL   = isMobile ? 110 : 190;
+const ROW   = isMobile ? 32  : 40;
+const PAD_T = isMobile ? 40  : 60;
+let PAD_L = 90;
+const DR    = 5;
+const SPD   = 0.10;
+
+let W, H, rafId;
+
+// ── Layout ────────────────────────────────────────────────────
+function visibleChildren(node) {
+  if (!node.children) return [];
+  if (collapsed.has(node.id)) return [];
+  return node.children;
+}
+
+function assignTargets(node, depth, counter, parentId) {
+  const kids = visibleChildren(node);
+  const tx = PAD_L + depth * COL;
+
+  if (!kids.length) {
+    const ty = PAD_T + counter.i * ROW;
+    counter.i++;
+    setTarget(node.id, tx, ty, 1, parentId);
+    return { minY: ty, maxY: ty };
+  }
+
+  let minY = Infinity, maxY = -Infinity;
+  kids.forEach(c => {
+    const r = assignTargets(c, depth + 1, counter, node.id);
+    minY = Math.min(minY, r.minY);
+    maxY = Math.max(maxY, r.maxY);
+  });
+  const ty = (minY + maxY) / 2;
+  setTarget(node.id, tx, ty, 1, parentId);
+  return { minY, maxY };
+}
+
+// hidden children → target their parent's position, alpha 0
+function assignHidden(node, parentId) {
+  if (!node.children) return;
+  if (collapsed.has(node.id)) {
+    node.children.forEach(c => {
+      setTarget(c.id, pos[node.id]?.tx ?? pos[node.id]?.x ?? PAD_L, pos[node.id]?.ty ?? pos[node.id]?.y ?? PAD_T, 0, node.id);
+      assignHidden(c, c.id);
+    });
+  } else {
+    node.children.forEach(c => assignHidden(c, node.id));
+  }
+}
+
+function setTarget(id, tx, ty, ta, parentId) {
+  if (!pos[id]) {
+    // new node — start at parent position
+    const px = pos[parentId]?.x ?? tx;
+    const py = pos[parentId]?.y ?? ty;
+    pos[id] = { x: px, y: py, alpha: 0, tx, ty, talpha: ta };
+  } else {
+    pos[id].tx = tx;
+    pos[id].ty = ty;
+    pos[id].talpha = ta;
+  }
+}
+
+function recompute() {
+  const counter = { i: 0 };
+  assignTargets(DATA, 0, counter, null);
+  assignHidden(DATA, 'root');
+  resizeCanvas(counter.i);
+  animating = true;
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(tick);
+}
+
+function resizeCanvas(leafCount) {
+  W = wrap.offsetWidth || 800;
+  H = Math.max(wrap.offsetHeight || 500, PAD_T + (leafCount + 1) * ROW);
+
+  // compute how wide the tree is, then center it
+  function maxDepth(node) {
+    if (!node.children || collapsed.has(node.id)) return 0;
+    return 1 + Math.max(...node.children.map(maxDepth));
+  }
+  const depth = maxDepth(DATA);
+  const treeW = depth * COL + 260; // approx width including labels
+  PAD_L = Math.max(90, (W - treeW) / 2);
+
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr, dpr);
+}
+
+// ── Animation loop ────────────────────────────────────────────
+function lerp(a, b, t) { return a + (b - a) * t; }
+let animating = true;
+
+function tick() {
+  let moving = false;
+  Object.values(pos).forEach(p => {
+    const dx = p.tx - p.x, dy = p.ty - p.y, da = p.talpha - p.alpha;
+    if (Math.abs(dx) > 0.2 || Math.abs(dy) > 0.2 || Math.abs(da) > 0.008) {
+      moving = true;
+      p.x = lerp(p.x, p.tx, SPD);
+      p.y = lerp(p.y, p.ty, SPD);
+      p.alpha = lerp(p.alpha, p.talpha, SPD);
+    } else {
+      p.x = p.tx; p.y = p.ty; p.alpha = p.talpha;
+    }
+    if (p.alpha < 0.003) p.alpha = 0;
+    if (p.alpha > 0.997) p.alpha = 1;
+  });
+
+  // pulse always needs redraw; otherwise only redraw when moving
+  draw();
+  if (moving || animating) {
+    rafId = requestAnimationFrame(tick);
+    animating = moving;
+  } else {
+    // idle — only redraw for pulse
+    rafId = requestAnimationFrame(pulseTick);
+  }
+}
+
+function pulseTick() {
+  draw();
+  rafId = requestAnimationFrame(pulseTick);
+}
+
+// ── Draw ──────────────────────────────────────────────────────
+function curve(ax, ay, bx, by, alpha) {
+  if (alpha < 0.01) return;
+  const mx = (ax + bx) / 2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.bezierCurveTo(mx, ay, mx, by, bx, by);
+  ctx.strokeStyle = '#ccc';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawAll(node, parent) {
+  const p = pos[node.id];
+  if (!p) return;
+  const alpha = p.alpha;
+
+  if (parent) {
+    const pp = pos[parent.id];
+    if (pp) curve(pp.x, pp.y, p.x, p.y, Math.min(pp.alpha, alpha));
+  }
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // dot
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, DR, 0, Math.PI*2);
+  ctx.fillStyle = !parent ? '#fff' : '#d8e8f5';
+  ctx.fill();
+  ctx.strokeStyle = !parent ? '#aaa' : '#7aa7d4';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  const isRoot  = !parent;
+  const isChron = node.date !== undefined;
+  const isLeaf  = node.href && !node.children;
+
+  ctx.font = '11px monospace';
+
+  if (isRoot || node.children) {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = isRoot ? '13px monospace' : '12px monospace';
+    if (isRoot) {
+      // no label — just the radiating pulse effect handled separately
+    } else {
+      ctx.fillText(node.name, p.x - DR - 7, p.y + 4);
+      // shop desc
+      if (node.shopNode && descOpen.has(node.id)) {
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#888';
+        ctx.font = '10px monospace';
+        ctx.fillText(node.desc, p.x + DR + 7, p.y + 4);
+        ctx.textAlign = 'right';
+      }
+    }
+  } else if (isChron) {
+    // date above, title below — RIGHT of dot
+    ctx.textAlign = 'left';
+    const mobF = window.innerWidth < 600;
+    ctx.textAlign = 'left';
+    if (node.date) {
+      // date above title, both above the line
+      ctx.fillStyle = '#bbb';
+      ctx.font = (mobF?'8px':'9px') + ' monospace';
+      ctx.fillText(node.date, p.x + DR + 7, p.y - 14);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.font = (mobF?'10px':'11px') + ' monospace';
+      ctx.fillText(node.name, p.x + DR + 7, p.y - 4);
+    } else {
+      ctx.fillStyle = '#1a1a1a';
+      ctx.font = (mobF?'10px':'11px') + ' monospace';
+      ctx.fillText(node.name, p.x + DR + 7, p.y - 4);
+    }
+    // desc above line when open
+    if (descOpen.has(node.id) && node.desc) {
+      ctx.fillStyle = '#888';
+      ctx.font = '9px monospace';
+      ctx.fillText(node.desc, p.x + DR + 7, p.y - (node.date ? 26 : 16));
+    }
+  } else if (isLeaf) {
+    ctx.font = (window.innerWidth<600?'10px':'11px') + ' monospace';
+    if (node.contact) {
+      ctx.textAlign = 'left';
+      // split "label // value" — prefix black, value blue
+      const parts = node.name.split(' // ');
+      if (parts.length === 2) {
+        ctx.fillStyle = '#1a1a1a';
+        const prefixW = ctx.measureText(parts[0] + ' // ').width;
+        ctx.fillText(parts[0] + ' // ', p.x + DR + 7, p.y + 4);
+        ctx.fillStyle = '#00e';
+        ctx.fillText(parts[1], p.x + DR + 7 + prefixW, p.y + 4);
+      } else {
+        ctx.fillStyle = '#00e';
+        ctx.fillText(node.name, p.x + DR + 7, p.y + 4);
+      }
+    } else {
+      // label left of dot
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#1a1a1a';
+      const leafLabel = node.name.charAt(0).toUpperCase() + node.name.slice(1);
+      ctx.fillText(leafLabel, p.x - DR - 7, p.y + 4);
+      // thumbnail right of dot
+      if (node.img) {
+        const im = loadImg(node.img);
+        const tw = 52, th = 38;
+        const ix = p.x + DR + 8, iy = p.y - th / 2;
+        ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1;
+        ctx.strokeRect(ix, iy, tw, th);
+        if (im && im.complete && im.naturalWidth) {
+          ctx.drawImage(im, ix, iy, tw, th);
+        } else {
+          ctx.fillStyle = '#f0f0f0';
+          ctx.fillRect(ix, iy, tw, th);
+        }
+      }
+    }
+  }
+
+  ctx.restore();
+
+  // draw visible children
+  visibleChildren(node).forEach(c => drawAll(c, node));
+
+  // draw hidden children (fading out)
+  if (node.children && collapsed.has(node.id)) {
+    node.children.forEach(c => drawFading(c, node));
+  }
+}
+
+function drawFading(node, parent) {
+  const p = pos[node.id];
+  if (!p || p.alpha < 0.005) return;
+  const pp = pos[parent.id];
+  if (pp) curve(pp.x, pp.y, p.x, p.y, Math.min(pp.alpha, p.alpha));
+
+  ctx.save();
+  ctx.globalAlpha = p.alpha;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, DR, 0, Math.PI*2);
+  ctx.fillStyle = '#d8e8f5';
+  ctx.fill();
+  ctx.strokeStyle = '#7aa7d4';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#1a1a1a';
+  ctx.font = '11px monospace';
+  ctx.fillText(node.name, p.x + DR + 7, p.y + 4);
+  ctx.restore();
+  if (node.children) node.children.forEach(c => drawFading(c, node));
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  drawAll(DATA, null);
+}
+
+// ── Hit test ──────────────────────────────────────────────────
+function allNodes(node, arr) {
+  arr.push(node);
+  if (node.children) node.children.forEach(c => allNodes(c, arr));
+  return arr;
+}
+
+function handleCanvasInput(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  const mx = clientX - r.left + wrap.scrollLeft;
+  const my = clientY - r.top  + wrap.scrollTop;
+
+  for (const node of allNodes(DATA, [])) {
+    const p = pos[node.id];
+    if (!p) continue;
+    if (p.alpha < 0.05 && p.talpha === 0) continue;
+    const hitR = window.innerWidth < 600 ? DR + 28 : DR + 14;
+    // check image box click first
+    if (node.img) {
+      const tw = 52, th = 38;
+      const ix = p.x + DR + 8, iy = p.y - th / 2;
+      if (mx >= ix && mx <= ix + tw && my >= iy && my <= iy + th) {
+        openModal(node);
+        return;
+      }
+    }
+
+    if (Math.hypot(mx - p.x, my - p.y) > hitR) continue;
+
+    if (node.date !== undefined) {
+      if (descOpen.has(node.id)) descOpen.delete(node.id);
+      else descOpen.add(node.id);
+      return;
+    }
+    if (node.id === 'root') {
+      // root dot toggles L1 children
+      const allC = DATA.children.every(ch => collapsed.has(ch.id));
+      if (allC) DATA.children.forEach(ch => collapsed.delete(ch.id));
+      else DATA.children.forEach(ch => collapsed.add(ch.id));
+      recompute();
+      return;
+    }
+    if (node.href && !node.children) {
+      window.location.href = node.href;
+      return;
+    }
+    if (node.shopNode) {
+      if (descOpen.has(node.id)) descOpen.delete(node.id);
+      else descOpen.add(node.id);
+      return;
+    }
+    if (node.children && node.children.length > 0) {
+      if (collapsed.has(node.id)) collapsed.delete(node.id);
+      else collapsed.add(node.id);
+      recompute();
+      return;
+    }
+  }
+}
+
+function allIds(node) {
+  const ids = [node.id];
+  if (node.children) node.children.forEach(c => ids.push(...allIds(c)));
+  return ids;
+}
+
+function init() {
+  animating = true;
+  // collapse L1 nodes so only root dot shows at start
+  DATA.children.forEach(ch => {
+    collapsed.add(ch.id);
+    // also collapse L2 children so clicking Objects shows only Paintings/Sketches/Objects
+    if (ch.children) ch.children.forEach(l2 => {
+      if (l2.children && l2.children.length) collapsed.add(l2.id);
+    });
+  });
+  recompute();
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(tick);
+}
+
+let touchStartX = 0, touchStartY = 0, isTap = false;
+
+canvas.addEventListener('touchstart', e => {
+  const t = e.changedTouches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+  isTap = true;
+  // fire immediately on touchstart for instant response
+  handleCanvasInput(t.clientX, t.clientY);
+}, { passive: true });
+
+canvas.addEventListener('touchmove', e => {
+  const t = e.changedTouches[0];
+  if (Math.abs(t.clientX - touchStartX) > 8 || Math.abs(t.clientY - touchStartY) > 8) {
+    isTap = false;
+  }
+}, { passive: true });
+
+// prevent click from firing twice after touch
+canvas.addEventListener('click', e => {
+  if (isTap) { isTap = false; return; }
+  handleCanvasInput(e.clientX, e.clientY);
+});
+
+window.addEventListener('load', init);
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { recompute(); }, 120);
+});
+</script>
+<!-- MODAL OVERLAY -->
+<div id="modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:100;overflow:auto;">
+  <div style="max-width:560px;margin:0 auto;padding:40px 24px;font-family:monospace;font-size:13px;">
+
+    <a onclick="closeModal()" style="cursor:pointer;color:#00e;font-size:12px;display:block;margin-bottom:24px;">← back</a>
+
+    <img id="modal-img" src="" style="width:100%;display:block;border:1px solid #000;margin-bottom:16px;">
+
+    <hr style="border:none;border-top:1px solid #000;margin:12px 0;">
+
+    <div id="modal-title" style="font-size:14px;font-weight:bold;color:#000;margin-bottom:4px;"></div>
+    <div id="modal-desc" style="font-size:12px;color:#666;margin-bottom:20px;line-height:1.8;"></div>
+
+    <hr style="border:none;border-top:1px dotted #aaa;margin:12px 0 20px;">
+
+    <div style="font-size:11px;color:#aaa;margin-bottom:14px;">[ inquiry ]</div>
+
+    <div style="margin-bottom:8px;">
+      <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">name</label>
+      <input id="inq-name" type="text" style="width:100%;font-family:monospace;font-size:12px;border:none;border-bottom:1px solid #000;padding:4px 0;outline:none;background:none;display:block;">
+    </div>
+
+    <div style="margin-bottom:8px;">
+      <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">email</label>
+      <input id="inq-email" type="email" style="width:100%;font-family:monospace;font-size:12px;border:none;border-bottom:1px solid #000;padding:4px 0;outline:none;background:none;display:block;">
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">message</label>
+      <textarea id="inq-msg" rows="4" style="width:100%;font-family:monospace;font-size:12px;border:none;border-bottom:1px solid #000;padding:4px 0;outline:none;background:none;resize:none;display:block;"></textarea>
+    </div>
+
+    <a onclick="submitInquiry()" style="cursor:pointer;font-family:monospace;font-size:12px;color:#000;text-decoration:underline;">send →</a>
+    <span id="inq-msg-sent" style="font-size:11px;color:#888;margin-left:12px;display:none;">sent.</span>
+
+  </div>
+</div>
+
+<script>
+let modalNode = null;
+
+function openModal(node) {
+  modalNode = node;
+  document.getElementById('modal-img').src = node.img || '';
+  document.getElementById('modal-title').textContent = node.name;
+  document.getElementById('modal-desc').textContent = node.desc || '';
+  document.getElementById('inq-name').value = '';
+  document.getElementById('inq-email').value = '';
+  document.getElementById('inq-msg').value = '';
+  document.getElementById('inq-msg-sent').style.display = 'none';
+  const m = document.getElementById('modal');
+  m.style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+  modalNode = null;
+}
+
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+function submitInquiry() {
+  const name  = document.getElementById('inq-name').value.trim();
+  const email = document.getElementById('inq-email').value.trim();
+  const msg   = document.getElementById('inq-msg').value.trim();
+  const work  = modalNode ? modalNode.name : 'Unknown work';
+  if (!name || !email) { alert('Please enter your name and email.'); return; }
+  const subject = encodeURIComponent('Inquiry: ' + work);
+  const body = encodeURIComponent(
+    'Work: ' + work + '\n' +
+    'From: ' + name + '\n' +
+    'Email: ' + email + '\n\n' +
+    (msg || '(no message)')
+  );
+  window.location.href = 'mailto:dcho90014@gmail.com?subject=' + subject + '&body=' + body;
+  document.getElementById('inq-msg-sent').style.display = 'inline';
+}
+</script>
+</body>
+</html>
