@@ -110,7 +110,7 @@ const DATA = {
         { id:'c1', name:'spawned',            date:'2001',      desc:'ah hell nah',                                                        chron:true },
         { id:'c2', name:'fell on my chin',    date:'2013',      desc:'Tabula Rasa',                                                        chron:true },
         { id:'c3', name:'coordinate swap',    date:'2015',      desc:'Bye, Korea. Hello, Americans :)',                                    chron:true },
-        { id:'c4', name:'impasse arena',      date:'2015–2021', desc:'',                                                                    chron:true },
+        { id:'c4', name:'impasse arena',      date:'2015–2021', desc:'Schools',                                                                    chron:true },
         { id:'c5', name:'coordinate swap v2', date:'2021',      desc:'Moved to Detroit.',                                                  chron:true },
         { id:'c6', name:'autistic sage',      date:'2025',      desc:'- bought me many lamingtons and shown me corners to watch out for.', chron:true },
         { id:'c7', name:'now',                date:'',          desc:'imbibing all yo frameworks.',                                        chron:true },
@@ -125,7 +125,7 @@ const DATA = {
   ]
 };
 
-const COL = 190, ROW = 44, PAD_T = 0, DR = 5, SPD = 0.10;
+const COL = 190, ROW = 58, PAD_T = 0, DR = 5, SPD = 0.10;
 let PAD_L = 0;
 let W = 800, H = 500;
 
@@ -329,15 +329,16 @@ function drawAll(node, parent) {
     if (descOpen.has(node.id) && node.desc) {
       ctx.fillStyle = '#888';
       ctx.font = '9px monospace';
+      const maxDescW = window.innerWidth < 600 ? 140 : 200;
       const words = node.desc.split(' ');
       let line = '', lines = [];
       for (const w of words) {
         const test = line ? line + ' ' + w : w;
-        if (ctx.measureText(test).width > 150 && line) { lines.push(line); line = w; }
+        if (ctx.measureText(test).width > maxDescW && line) { lines.push(line); line = w; }
         else line = test;
       }
       if (line) lines.push(line);
-      lines.forEach((l, i) => ctx.fillText(l, p.x + DR + 7, p.y + 10 + i * 12));
+      lines.forEach((l, i) => ctx.fillText(l, p.x + DR + 7, p.y + 14 + i * 14));
     }
   } else if (isContact) {
     ctx.textAlign = 'left';
@@ -391,6 +392,14 @@ function allNodes(node, arr) {
   return arr;
 }
 
+function collapseDeep(node) {
+  if (!node.children) return;
+  node.children.forEach(ch => {
+    collapsed.add(ch.id);
+    collapseDeep(ch);
+  });
+}
+
 function handleInput(clientX, clientY) {
   const r = canvas.getBoundingClientRect();
   const mx = (clientX - r.left - camX) / camScale;
@@ -414,8 +423,16 @@ function handleInput(clientX, clientY) {
 
     if (node.id === 'root') {
       const allC = DATA.children.every(ch => collapsed.has(ch.id));
-      if (allC) DATA.children.forEach(ch => collapsed.delete(ch.id));
-      else DATA.children.forEach(ch => collapsed.add(ch.id));
+      if (allC) {
+        // expand L1 only, keep everything deeper collapsed
+        DATA.children.forEach(ch => {
+          collapsed.delete(ch.id);
+          collapseDeep(ch);
+        });
+      } else {
+        // collapse everything
+        collapseDeep(DATA);
+      }
       recompute(); return;
     }
     if (node.shopNode || node.chron) {
