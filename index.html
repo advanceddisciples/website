@@ -221,6 +221,8 @@ function recompute() {
   rafId = requestAnimationFrame(tick);
 }
 
+let initialFitDone = false;
+
 // image cache
 const imgCache = {};
 function loadImg(src) {
@@ -647,6 +649,12 @@ function submitInquiry() {
 window.addEventListener('load', () => {
   initCollapsed();
   recompute();
+  setTimeout(() => {
+    if (!initialFitDone) {
+      initialFitDone = true;
+      resetView();
+    }
+  }, 350);
 });
 window.addEventListener('resize', () => recompute());
 </script>
